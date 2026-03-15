@@ -1,0 +1,238 @@
+{
+  "name": "Discord Ai Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "96ece64b-d538-483f-a171-22653ac3d15c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a7d791c9-bacf-4ae6-82a3-fe733b013c7a",
+              "leftValue": "={{$json.content}}",
+              "rightValue": "!ask",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "a44c38ab-ab0b-4049-b679-4540081c6e35",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.content;\nconst question = content.replace('!ask', '').trim();\nconst messageId = $input.first().json.id;\nreturn [{ json: { question: question, messageId: messageId, aiReply: \"\" } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "ee1f037c-c040-4579-b0a7-c641974eff9c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_DISCORD_WEBHOOK_URL",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=={{$json.choices[0].message.content}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        -96
+      ],
+      "id": "033de581-a30b-4a9a-bcc4-5722891a8003",
+      "name": "Post Answer to Discord"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant. Answer clearly and concisely.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{$json.question}}\"\n    }\n  ],\n  \"max_tokens\": 500\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "661ef98f-4d3a-47e0-9180-e15d5d2f397b",
+      "name": "Groq HTTP Request Node",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RAeKW8QSPeIe4HLr",
+          "name": "Header Auth account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://discord.com/api/v10/channels/YOUR_DISCORD_CHANNEL_ID/messages?limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "YOUR_DISCORD_BOT_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6a5f1fe4-91f1-4cdb-b7c3-9dfd47dd4022",
+      "name": "Read Discord Messages"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Discord Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Groq HTTP Request Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq HTTP Request Node": {
+      "main": [
+        [
+          {
+            "node": "Post Answer to Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Discord Messages": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "39139720-5057-43dc-a483-ddb09cd298e5",
+  "meta": {
+    "instanceId": "1842a54c9a44660d63cb5d3a43324748845f04263583d20c8f9d009e205e017f"
+  },
+  "id": "hJ8hKcLgWR7Chq9X",
+  "tags": []
+}
